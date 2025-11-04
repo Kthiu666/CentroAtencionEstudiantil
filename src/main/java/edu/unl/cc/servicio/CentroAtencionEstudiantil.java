@@ -17,11 +17,13 @@ public class CentroAtencionEstudiantil {
     private Queue<Ticket> ticketsAtendidos; // Cola para tickets que ya fueron finalizados
     private Map<String, Estudiante> estudiantes;  // Mapa para  acceso a estudiantes por su cédula
     private Ticket ticketAtencion; // El ticket que está siendo atendido en ese momento (solo uno a la vez)
+    private Queue<Ticket> ticketsUrgentes;
 
     public CentroAtencionEstudiantil() {
         this.acciones = new Stack<>();
         this.accionesRevertidas = new Stack<>();
         this.tickets = new LinkedList<>();
+        this.ticketsUrgentes = new LinkedList<>();
         this.ticketsAtendidos = new LinkedList<>();
         this.estudiantes = new HashMap<>();
         this.ticketAtencion = null; // Nadie está en atención al inicio
@@ -51,10 +53,15 @@ public class CentroAtencionEstudiantil {
         }
 
         // Añadir a la cola y registrar acción
-        this.tickets.add(ticket);
-        // Registro para el historial interno
-        this.acciones.push("Ticket " + ticket.getNumero() + " creado para " + ticket.getEstudiante().getNombre());
-        System.out.println("Ticket " + ticket.getNumero() + " agregado a la cola de espera.");
+        if (ticket.isUrgente()) {
+            this.ticketsUrgentes.add(ticket);
+            //this.acciones.push("Ticket URGENTE " + ticket.getNumero() + " creado para " + ticket.getEstudiante().getNombre());
+            System.out.println("Ticket " + ticket.getNumero() + " agregado a la cola URGENTE.");
+        } else {
+            this.tickets.add(ticket);
+            //this.acciones.push("Ticket " + ticket.getNumero() + " creado para " + ticket.getEstudiante().getNombre());
+            System.out.println("Ticket " + ticket.getNumero() + " agregado a la cola de espera.");
+        }
     }
 
     /**
@@ -66,23 +73,34 @@ public class CentroAtencionEstudiantil {
         if (this.ticketAtencion != null) {
             System.out.println("ERROR: Ya hay un ticket (" + ticketAtencion.getNumero() + ") en atención.");
             return; }
+        // Atiende de la cola Urgente
+        if (!this.ticketsUrgentes.isEmpty()) {
+            this.ticketAtencion = this.ticketsUrgentes.poll();
+            this.ticketAtencion.setEstado(Estado.EN_ATENCION);
 
-        // Valida si existen tickets
-        if (this.tickets.isEmpty()) {
-            System.out.println("INFO: No hay tickets en la cola de espera.");
-            return; }
+            Nota notaInicio = new Nota("Inicio de atención (URGENTE).", LocalDate.now());
+            this.ticketAtencion.agregarNota(notaInicio);
 
-        // Saca el ticket de la cola de espera .poll() remueve el primer elemento de la cola
-        this.ticketAtencion = this.tickets.poll();
-        this.ticketAtencion.setEstado(Estado.EN_ATENCION);  // Cambiar estado
+            // Registrar la acción
+            this.acciones.push("Ticket URGENTE " + ticketAtencion.getNumero() + " pasa a atención.");
+            System.out.println(" Atendiendo ticket URGENTE " + ticketAtencion.getNumero());
 
-        // Agregar nota de inicio
-        Nota notaInicio = new Nota("Inicio de atención.", LocalDate.now());
-        this.ticketAtencion.agregarNota(notaInicio);
+            //  Si no hay urgentes, atiende la cola NORMAL
+        } else if (!this.tickets.isEmpty()) {
+            this.ticketAtencion = this.tickets.poll();
+            this.ticketAtencion.setEstado(Estado.EN_ATENCION);
 
-        // Registrar la acción
-        this.acciones.push("Ticket " + ticketAtencion.getNumero() + " pasa a atención.");
-        System.out.println(" Atendiendo ticket " + ticketAtencion.getNumero());
+            Nota notaInicio = new Nota("Inicio de atención.", LocalDate.now());
+            this.ticketAtencion.agregarNota(notaInicio);
+
+            this.acciones.push("Ticket " + ticketAtencion.getNumero() + " pasa a atención.");
+            System.out.println(" Atendiendo ticket " + ticketAtencion.getNumero());
+
+            //  Si ambas están vacías
+        } else {
+            System.out.println("INFO: No hay tickets (normales o urgentes) en la cola de espera.");
+            return;
+        }
     }
 
     // cambiar estado a completado con nota de tramite finalizadp
@@ -125,6 +143,7 @@ public class CentroAtencionEstudiantil {
      */
     public Ticket buscarTicketPorNumero(int numero) {
         if (ticketAtencion != null && ticketAtencion.getNumero() == numero) return ticketAtencion;
+        for (Ticket t : ticketsUrgentes) if (t.getNumero() == numero) return t;
         for (Ticket t : tickets) if (t.getNumero() == numero) return t;
         for (Ticket t : ticketsAtendidos) if (t.getNumero() == numero) return t;
         return null;
@@ -167,6 +186,9 @@ public class CentroAtencionEstudiantil {
         int numeroMaximo = 0;
 
         // Buscar el número máximo entre los tickets pendientes
+        for (Ticket ticket : this.ticketsUrgentes){
+            numeroMaximo = Math.max(numeroMaximo, ticket.getNumero());
+        }
         for (Ticket ticket : this.tickets){
             numeroMaximo = Math.max(numeroMaximo, ticket.getNumero());
         }
@@ -226,7 +248,12 @@ public class CentroAtencionEstudiantil {
             // Revertir atención: Mover el ticket de atención de vuelta a la cola
             if (this.ticketAtencion != null) {
                 this.ticketAtencion.setEstado(Estado.EN_COLA);
-                this.tickets.add(this.ticketAtencion);
+                // Leemos el estado del objeto.
+                if (this.ticketAtencion.isUrgente()) {
+                    this.ticketsUrgentes.add(this.ticketAtencion);
+                } else {
+                    this.tickets.add(this.ticketAtencion);
+                }
                 this.ticketAtencion = null;
             }
 
@@ -298,6 +325,14 @@ public class CentroAtencionEstudiantil {
 
     public Queue<Ticket> getTickets () {
         return tickets;
+    }
+
+    public Queue<Ticket> getTicketsUrgentes() {
+        return ticketsUrgentes;
+    }
+
+    public void setTicketsUrgentes(Queue<Ticket> ticketsUrgentes) {
+        this.ticketsUrgentes = ticketsUrgentes;
     }
 
     public void setTickets (Queue < Ticket > tickets) {
