@@ -36,7 +36,9 @@ public class Consola {
             System.out.println("7. Finalizar atencion de ticket");
             System.out.println("8. Consultar ticket en espera");
             System.out.println("9. Consultar ticket en historial");
-            System.out.println("10. Salir");
+            System.out.println("10. Marcar ticket actual como PENDIENTE");
+            System.out.println("11. Reanudar ticket PENDIENTE");
+            System.out.println("12. Salir");
             System.out.println("---------------------------------------");
             System.out.println("Elija una opcion:");
             opcionMenuPrincipal = sc.nextInt();
@@ -70,12 +72,18 @@ public class Consola {
                     consultarHistorialTicket();
                     break;
                 case 10:
+                    mostrarMenuMarcarPendiente();
+                    break;
+                case 11:
+                    mostrarMenuReanudarTicket();
+                    break;
+                case 12:
                     System.out.println("Fin");
                     break;
                 default:
                     System.out.println("Ingrese una opcion valida");
             }
-        } while (opcionMenuPrincipal != 10);
+        } while (opcionMenuPrincipal != 12);
     }
 
     public void mostrarMenuRegistrarEstudiante() {
@@ -204,11 +212,8 @@ public class Consola {
             System.out.println("(No hay tickets en la cola)");
         } else {
             System.out.println("Listado de tickets en espera (del primero al último):");
-
-            // Iteramos sobre la cola para imprimir cada ticket
-            // Un for-each sobre una Queue NO la modifica, solo la lee.
             for (Ticket ticket : colaEspera) {
-                // Asumo que tienes métodos get() en tu clase Ticket
+
                 System.out.println("  -> Ticket N°" + ticket.getNumero()
                         + "   | Estudiante: " + ticket.getEstudiante().getNombre()
                         + "   | Trámite   : " + ticket.getTipoTramite());
@@ -225,7 +230,6 @@ public class Consola {
         sc.nextLine();
         Ticket ticket = centroAtencionEstudiantil.buscarTicketPorNumero(numero);
         System.out.println("Buscando ticket #" + numero);
-        // imprime historial de acciones
         centroAtencionEstudiantil.consultarHistorial(ticket);
         System.out.println("--- Notas y Observaciones  ---");
         if (ticket != null) {
@@ -234,18 +238,60 @@ public class Consola {
             if (notasDelTicket == null || notasDelTicket.isEmpty()) {
                 System.out.println("(No hay notas registradas en este ticket)");
             } else {
-                // Iteramos sobre la lista de notas y las mostramos
                 for (Nota nota : notasDelTicket) {
                     System.out.println("  -> " + nota.toString());
                 }
             }
         } else {
-            // Esta línea solo se mostraría si buscarTicketPorNumero devolvió null
             System.out.println("(Ticket no encontrado)");
         }
         System.out.println("---------------------------------------");
     }
 
+    public void mostrarMenuMarcarPendiente() {
+        if (centroAtencionEstudiantil.getTicketAtencion() == null) {
+            System.out.println("ERROR: No hay ningún ticket en atención activa para marcar como pendiente.");
+            return;
+        }
+
+        System.out.println("---------------------------------------");
+        System.out.println("Ticket en atención: #" + centroAtencionEstudiantil.getTicketAtencion().getNumero());
+        System.out.println("Ingrese el MOTIVO para marcar como PENDIENTE:");
+        String motivo = sc.nextLine();
+
+        if (motivo.trim().isEmpty()) {
+            System.out.println("Cancelado. Debe ingresar un motivo.");
+            return;
+        }
+
+        centroAtencionEstudiantil.marcarPendiente(motivo);
+        System.out.println("Ticket #" + (centroAtencionEstudiantil.getTicketAtencion() != null ? centroAtencionEstudiantil.getTicketAtencion().getNumero() : "") + " movido a pendientes.");
+        System.out.println("---------------------------------------");
+    }
+
+    public void mostrarMenuReanudarTicket() {
+        if (centroAtencionEstudiantil.getTicketAtencion() != null) {
+            System.out.println("ERROR: Ya hay un ticket en atención. Finalícelo primero.");
+            return;
+        }
+
+        System.out.println("---------------------------------------");
+        System.out.println("Reanudar Ticket Pendiente");
+        System.out.println("Ingrese el NÚMERO del ticket que desea reanudar:");
+
+        int numeroTicket;
+        try {
+            numeroTicket = sc.nextInt();
+            sc.nextLine(); // Limpiar buffer
+        } catch (java.util.InputMismatchException e) {
+            System.out.println("ERROR: Debe ingresar un número.");
+            sc.nextLine(); // Limpiar buffer
+            return;
+        }
+
+        centroAtencionEstudiantil.reanudarTicket(numeroTicket);
+        System.out.println("---------------------------------------");
+    }
     public static void main(String[] args) {
         Consola consola = new Consola();
         consola.mostrarMenuPrincipal();
