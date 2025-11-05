@@ -184,7 +184,7 @@ public class CentroAtencionEstudiantil {
     }
 
     /**
-    * Calcula y devuelve el siguiente número de ticket disponible.
+    * Encuentra el número de ticket más alto que existe y devuelve el siguiente número de ticket
     * @return El nuevo número de ticket.
     */
     public int siguienteTicket() {
@@ -197,12 +197,13 @@ public class CentroAtencionEstudiantil {
         for (Ticket ticket : this.tickets){
             numeroMaximo = Math.max(numeroMaximo, ticket.getNumero());
         }
-        
-        // Actualizar el número máximo con los tickets atendidos
-        for (Ticket ticket : this.ticketsAtendidos) {
+        for (Ticket ticket : this.ticketsPendientes.values()) {
             numeroMaximo = Math.max(numeroMaximo, ticket.getNumero());
         }
 
+        for (Ticket ticket : this.ticketsAtendidos) {
+            numeroMaximo = Math.max(numeroMaximo, ticket.getNumero());
+        }
         if (this.ticketAtencion != null){
             numeroMaximo = Math.max(numeroMaximo, this.ticketAtencion.getNumero());
         }
@@ -433,15 +434,15 @@ public class CentroAtencionEstudiantil {
      * Reanuda la atención de un ticket que estaba en PENDIENTE_DOCS.
      * Lo busca por su número, lo saca de pendientes y lo pone en atención.
      */
-    public void reanudarTicket(int numeroTicket) {
+    public boolean reanudarTicket(int numeroTicket) {
         if (this.ticketAtencion != null) {
             System.out.println("ERROR: Ya hay un ticket en atención (" + this.ticketAtencion.getNumero() + "). Finalícelo o márquelo como pendiente primero.");
-            return;
+            return false;
         }
         Ticket ticketAReanudar = this.ticketsPendientes.remove(numeroTicket);
         if (ticketAReanudar == null) {
             System.out.println("ERROR: No se encontró ningún ticket pendiente con el número " + numeroTicket);
-            return;
+            return false;
         }
         this.ticketAtencion = ticketAReanudar;
         this.ticketAtencion.setEstado(Estado.EN_ATENCION);
@@ -449,6 +450,7 @@ public class CentroAtencionEstudiantil {
         this.ticketAtencion.agregarNota(notaReanuda);
         this.acciones.push("Ticket " + numeroTicket + " reanudado desde PENDIENTE.");
         System.out.println("LOG: Reanudando atención del ticket " + numeroTicket);
+        return true;
     }
 
     public int getCantidadTicketsEspera () {

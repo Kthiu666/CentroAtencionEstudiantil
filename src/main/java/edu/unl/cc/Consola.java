@@ -128,11 +128,10 @@ public class Consola {
             case 1:
                 Estudiante nuevoEstudiante = new Estudiante(nombreEstudiante, apellidoEstudiante, cedula);
 
-                // ⚙️ Ahora el método devuelve true o false según si se registró o no
                 boolean registrado = centroAtencionEstudiantil.registrarEstudiante(nuevoEstudiante);
 
                 if (registrado) {
-                    System.out.println("Estudiante " + nuevoEstudiante.getNombre() + " registrado exitosamente :)");
+                    System.out.println("Estudiante " + nuevoEstudiante.getNombre() + nuevoEstudiante.getApellido() + " registrado exitosamente :)");
                 } else {
                     System.out.println("No se pudo registrar el estudiante.");
                 }
@@ -224,6 +223,12 @@ public class Consola {
             return;
         }
         System.out.println("---------------------------------------");
+        System.out.println("Agregando observación al siguiente ticket:"); // <--- NUEVO
+        System.out.println("  -> Ticket N°: " + centroAtencionEstudiantil.getTicketAtencion().getNumero()); // <--- NUEVO
+        // Asumo que tienes métodos como getEstudiante() y getNombre()
+        System.out.println("  -> Estudiante: " + centroAtencionEstudiantil.getTicketAtencion().getEstudiante().getNombre()); // <--- NUEVO
+        System.out.println("  -> Tramite: " + centroAtencionEstudiantil.getTicketAtencion().getTipoTramite()); // <--- NUEVO
+        System.out.println("---------------------------------------");
         String observaciones;
         do {
             System.out.println("Observaciones:");
@@ -289,14 +294,14 @@ public class Consola {
         System.out.println("Ingrese el NÚMERO del ticket para ver su historial:");
         int numero = sc.nextInt();
         sc.nextLine();
-        Ticket ticket = centroAtencionEstudiantil.buscarTicketPorNumero(numero);
         System.out.println("Buscando ticket #" + numero);
-        // imprime historial de acciones
-        centroAtencionEstudiantil.consultarHistorial(ticket);
-        System.out.println("--- Notas y Observaciones  ---");
+        Ticket ticket = centroAtencionEstudiantil.buscarTicketPorNumero(numero);
         if (ticket != null) {
+            // imprime historial de acciones
+            System.out.println("--- Historial de Acciones ---");
+            centroAtencionEstudiantil.consultarHistorial(ticket);
+            System.out.println("--- Notas y Observaciones  ---");
             List<Nota> notasDelTicket = ticket.getNotas();
-
             if (notasDelTicket == null || notasDelTicket.isEmpty()) {
                 System.out.println("(No hay notas registradas en este ticket)");
             } else {
@@ -313,13 +318,19 @@ public class Consola {
     }
 
     public void mostrarMenuMarcarPendiente() {
+        Ticket ticketActual = centroAtencionEstudiantil.getTicketAtencion();
         if (centroAtencionEstudiantil.getTicketAtencion() == null) {
             System.out.println("ERROR: No hay ningún ticket en atención activa para marcar como pendiente.");
             return;
         }
-
         System.out.println("---------------------------------------");
-        System.out.println("Ticket en atención: #" + centroAtencionEstudiantil.getTicketAtencion().getNumero());
+        System.out.println("Marcando como PENDIENTE el siguiente ticket:");
+        System.out.println("  -> Ticket N°: " + ticketActual.getNumero());
+        if (ticketActual.getEstudiante() != null) {
+            System.out.println("  -> Estudiante: " + ticketActual.getEstudiante().getNombre());
+        }
+        System.out.println("  -> Trámite: " + ticketActual.getTipoTramite());
+        System.out.println("---------------------------------------");
         System.out.println("Ingrese el MOTIVO para marcar como PENDIENTE:");
         String motivo = sc.nextLine();
 
@@ -327,9 +338,8 @@ public class Consola {
             System.out.println("Cancelado. Debe ingresar un motivo.");
             return;
         }
-
         centroAtencionEstudiantil.marcarPendiente(motivo);
-        System.out.println("Ticket #" + (centroAtencionEstudiantil.getTicketAtencion() != null ? centroAtencionEstudiantil.getTicketAtencion().getNumero() : "") + " movido a pendientes.");
+        System.out.println("Ticket #" + ticketActual.getNumero() + " movido a pendientes.");
         System.out.println("---------------------------------------");
     }
 
@@ -352,8 +362,10 @@ public class Consola {
             sc.nextLine(); // Limpiar buffer
             return;
         }
-
-        centroAtencionEstudiantil.reanudarTicket(numeroTicket);
+        boolean exito = centroAtencionEstudiantil.reanudarTicket(numeroTicket);
+        if (exito) {
+            System.out.println("Ticket #" + numeroTicket + " reanudado exitosamente y ahora está en atención.");
+        }
         System.out.println("---------------------------------------");
     }
 
