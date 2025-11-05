@@ -10,6 +10,7 @@ public class Ticket {
     private Estado estado;
     private TipoTramite tipoTramite;
     private Estudiante estudiante;
+    private boolean urgente;
 
     private List<Nota> notas;
 
@@ -27,6 +28,7 @@ public class Ticket {
         this.tipoTramite = tipoTramite;
         this.estudiante = estudiante;
         this.notas = new ArrayList<>();
+        this.urgente = false;
     }
 
     public void agregarNota(Nota nota) {
@@ -79,6 +81,14 @@ public class Ticket {
 
     public void setNotas(List<Nota> notas) {
         this.notas = notas;
+    }
+
+    public boolean isUrgente() {
+        return urgente;
+    }
+
+    public void setUrgente(boolean urgente) {
+        this.urgente = urgente;
     }
 
     @Override

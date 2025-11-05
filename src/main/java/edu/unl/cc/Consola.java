@@ -5,6 +5,7 @@ import edu.unl.cc.dominio.Nota;
 import edu.unl.cc.dominio.Ticket;
 import edu.unl.cc.dominio.TipoTramite;
 import edu.unl.cc.servicio.CentroAtencionEstudiantil;
+import edu.unl.cc.util.Validaciones;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -80,30 +81,61 @@ public class Consola {
 
     public void mostrarMenuRegistrarEstudiante() {
         System.out.println("----------------------------------------");
-        System.out.println("Ingrese el nombre del estudiante");
-        String nombreEstudiante = sc.nextLine();
-        System.out.println("Ingrese el apellido del estudiante:");
-        String apellidoEstudiante = sc.nextLine();
-        System.out.println("Ingrese la cedula del estudiante");
-        String cedula = sc.nextLine();
+        String nombreEstudiante;
+        do {
+            System.out.println("Ingrese el nombre del estudiante:");
+            nombreEstudiante = sc.nextLine();
+            if (!Validaciones.validarNombreApellido(nombreEstudiante)) {
+                System.out.println("ERROR: Nombre inválido. Use solo letras y espacios.");
+            }
+        } while (!Validaciones.validarNombreApellido(nombreEstudiante));
+
+        String apellidoEstudiante;
+        do {
+            System.out.println("Ingrese el apellido del estudiante:");
+            apellidoEstudiante = sc.nextLine();
+            if (!Validaciones.validarNombreApellido(apellidoEstudiante)) {
+                System.out.println("ERROR: Apellido inválido. Use solo letras y espacios.");
+            }
+        } while (!Validaciones.validarNombreApellido(apellidoEstudiante));
+
+        String cedula;
+        do {
+            System.out.println("Ingrese la cédula del estudiante (10 dígitos):");
+            cedula = sc.nextLine();
+            if (!Validaciones.validarCedula(cedula)) {
+                System.out.println("ERROR: Cédula inválida. Debe tener 10 dígitos numéricos.");
+            }
+        } while (!Validaciones.validarCedula(cedula));
+
         System.out.println("----------------------------------------");
         System.out.println("1. Añadir estudiante");
-        System.out.println("2. Salir/Volver al menu principal");
+        System.out.println("2. Salir/Volver al menú principal");
         System.out.println("----------------------------------------");
-        System.out.println("Elija una opcion:");
-        int opcionMenuRegitrarEstudiante = sc.nextInt();
+        System.out.println("Elija una opción:");
+        int opcionMenuRegistrarEstudiante = sc.nextInt();
         sc.nextLine();
-        switch (opcionMenuRegitrarEstudiante) {
+
+        switch (opcionMenuRegistrarEstudiante) {
             case 1:
                 Estudiante nuevoEstudiante = new Estudiante(nombreEstudiante, apellidoEstudiante, cedula);
-                centroAtencionEstudiantil.registrarEstudiante(nuevoEstudiante);
-                System.out.println("Estudiante " + nuevoEstudiante.getNombre() + " registrado exitosamente :)");
+
+                // ⚙️ Ahora el método devuelve true o false según si se registró o no
+                boolean registrado = centroAtencionEstudiantil.registrarEstudiante(nuevoEstudiante);
+
+                if (registrado) {
+                    System.out.println("Estudiante " + nuevoEstudiante.getNombre() + " registrado exitosamente :)");
+                } else {
+                    System.out.println("No se pudo registrar el estudiante.");
+                }
                 break;
+
             case 2:
-                System.out.println("Volviendo al menu principal");
+                System.out.println("Volviendo al menú principal...");
                 break;
-                default:
-                    System.out.println("Ingrese una opcion valida");
+
+            default:
+                System.out.println("Ingrese una opción válida.");
         }
     }
 
@@ -136,8 +168,21 @@ public class Consola {
             case 3: tipo = TipoTramite.CONSTANCIA; break;
             default: System.out.println("Opción no válida."); return;
         }
-        System.out.println("Ingrese una descripcion del tramite:");
-        String descripcion = sc.nextLine();
+
+        String descripcion ;
+        do {
+            System.out.println("Ingrese una descripcion del tramite:");
+            descripcion = sc.nextLine();
+            if (Validaciones.estaVacio(descripcion)) {
+                System.out.println("ERROR: La descripción no puede estar vacía.");
+            }
+        } while (Validaciones.estaVacio(descripcion));
+
+        // ---  PREGUNTAR URGENCIA ---
+        System.out.println("¿El trámite es URGENTE? (S/N):");
+        String urgenteInput = sc.nextLine();
+        boolean esUrgente = urgenteInput.trim().equalsIgnoreCase("S");
+
         System.out.println("--------------------------------------");
         System.out.println("1. Guardar y continuar");
         System.out.println("2. Salir/Volver al menu principal");
@@ -151,6 +196,7 @@ public class Consola {
                 Nota notaInicial = new Nota(descripcion, LocalDate.now());
                 nuevoTicket.setNumero(proximoNumero);
                 nuevoTicket.agregarNota(notaInicial);
+                nuevoTicket.setUrgente(esUrgente);
                 centroAtencionEstudiantil.crearTicket(nuevoTicket);
                 System.out.println("Ticket guardado correctamente!!");
                 break;
@@ -170,8 +216,14 @@ public class Consola {
             return;
         }
         System.out.println("---------------------------------------");
-        System.out.println("Observaciones:");
-        String observaciones = sc.nextLine();
+        String observaciones;
+        do {
+            System.out.println("Observaciones:");
+            observaciones = sc.nextLine();
+            if (Validaciones.estaVacio(observaciones)) {
+                System.out.println("ERROR: Las observaciones no pueden estar vacías.");
+            }
+        } while (Validaciones.estaVacio(observaciones));
         System.out.println("--------------------------------------");
         System.out.println("1. Agregar observacion");
         System.out.println("2. Salir/Volver al menu principal");
@@ -191,27 +243,33 @@ public class Consola {
             default:
                     System.out.println("Ingrese una opcion valida");
         }
-
     }
 
     public void menuConsultarTicketEspera(){
         System.out.println("---------------------------------------");
         Queue<Ticket> colaEspera = centroAtencionEstudiantil.getTickets();
-        int cantidad = colaEspera.size();
+        Queue<Ticket> colaUrgente = centroAtencionEstudiantil.getTicketsUrgentes();
+        int cantidad = colaEspera.size() + colaUrgente.size();
         System.out.println("Tickets en espera: " + cantidad);
         System.out.println("---------------------------------------");
         if (cantidad == 0) {
             System.out.println("(No hay tickets en la cola)");
         } else {
-            System.out.println("Listado de tickets en espera (del primero al último):");
-
+            System.out.println("Listado de tickets en espera :");
             // Iteramos sobre la cola para imprimir cada ticket
-            // Un for-each sobre una Queue NO la modifica, solo la lee.
-            for (Ticket ticket : colaEspera) {
-                // Asumo que tienes métodos get() en tu clase Ticket
+            // Un for-each sobre una Queue que la lee.
+            for (Ticket ticket : colaUrgente) {
                 System.out.println("  -> Ticket N°" + ticket.getNumero()
                         + "   | Estudiante: " + ticket.getEstudiante().getNombre()
-                        + "   | Trámite   : " + ticket.getTipoTramite());
+                        + "   | Trámite   : " + ticket.getTipoTramite()
+                        + "   | Es Urgente   : " + ticket.isUrgente());
+            }
+
+            for (Ticket ticket : colaEspera) {
+                System.out.println("  -> Ticket N°" + ticket.getNumero()
+                        + "   | Estudiante: " + ticket.getEstudiante().getNombre()
+                        + "   | Trámite   : " + ticket.getTipoTramite()
+                        + "   | Es Urgente   : " + ticket.isUrgente());
             }
         }
         System.out.println("---------------------------------------");
