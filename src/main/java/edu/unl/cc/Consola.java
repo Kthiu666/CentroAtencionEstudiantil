@@ -81,7 +81,7 @@ public class Consola {
 
     public void mostrarMenuRegistrarEstudiante() {
         System.out.println("----------------------------------------");
-        String nombreEstudiante ;
+        String nombreEstudiante;
         do {
             System.out.println("Ingrese el nombre del estudiante:");
             nombreEstudiante = sc.nextLine();
@@ -90,8 +90,7 @@ public class Consola {
             }
         } while (!Validaciones.validarNombreApellido(nombreEstudiante));
 
-
-        String apellidoEstudiante ;
+        String apellidoEstudiante;
         do {
             System.out.println("Ingrese el apellido del estudiante:");
             apellidoEstudiante = sc.nextLine();
@@ -100,9 +99,9 @@ public class Consola {
             }
         } while (!Validaciones.validarNombreApellido(apellidoEstudiante));
 
-        String cedula ;
+        String cedula;
         do {
-            System.out.println("Ingrese la cedula del estudiante (10 dígitos):");
+            System.out.println("Ingrese la cédula del estudiante (10 dígitos):");
             cedula = sc.nextLine();
             if (!Validaciones.validarCedula(cedula)) {
                 System.out.println("ERROR: Cédula inválida. Debe tener 10 dígitos numéricos.");
@@ -111,22 +110,32 @@ public class Consola {
 
         System.out.println("----------------------------------------");
         System.out.println("1. Añadir estudiante");
-        System.out.println("2. Salir/Volver al menu principal");
+        System.out.println("2. Salir/Volver al menú principal");
         System.out.println("----------------------------------------");
-        System.out.println("Elija una opcion:");
-        int opcionMenuRegitrarEstudiante = sc.nextInt();
+        System.out.println("Elija una opción:");
+        int opcionMenuRegistrarEstudiante = sc.nextInt();
         sc.nextLine();
-        switch (opcionMenuRegitrarEstudiante) {
+
+        switch (opcionMenuRegistrarEstudiante) {
             case 1:
                 Estudiante nuevoEstudiante = new Estudiante(nombreEstudiante, apellidoEstudiante, cedula);
-                centroAtencionEstudiantil.registrarEstudiante(nuevoEstudiante);
-                System.out.println("Estudiante " + nuevoEstudiante.getNombre() + " registrado exitosamente :)");
+
+                // ⚙️ Ahora el método devuelve true o false según si se registró o no
+                boolean registrado = centroAtencionEstudiantil.registrarEstudiante(nuevoEstudiante);
+
+                if (registrado) {
+                    System.out.println("Estudiante " + nuevoEstudiante.getNombre() + " registrado exitosamente :)");
+                } else {
+                    System.out.println("No se pudo registrar el estudiante.");
+                }
                 break;
+
             case 2:
-                System.out.println("Volviendo al menu principal");
+                System.out.println("Volviendo al menú principal...");
                 break;
-                default:
-                    System.out.println("Ingrese una opcion valida");
+
+            default:
+                System.out.println("Ingrese una opción válida.");
         }
     }
 

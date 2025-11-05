@@ -19,6 +19,7 @@ public class CentroAtencionEstudiantil {
     private Ticket ticketAtencion; // El ticket que está siendo atendido en ese momento (solo uno a la vez)
     private Queue<Ticket> ticketsUrgentes;
 
+
     public CentroAtencionEstudiantil() {
         this.acciones = new Stack<>();
         this.accionesRevertidas = new Stack<>();
@@ -29,19 +30,21 @@ public class CentroAtencionEstudiantil {
         this.ticketAtencion = null; // Nadie está en atención al inicio
     }
 
-    public void registrarEstudiante(Estudiante estudiante) {
+    public boolean registrarEstudiante(Estudiante estudiante) {
         if (estudiante == null || estudiante.getCedula() == null) {
             System.out.println("ERROR: El estudiante o su cédula no pueden ser nulos.");
-            return;
+            return false;
         }
 
-        // putIfAbsent añade solo si no existe y devuelve null cuando sea agrega correctamente
         if (this.estudiantes.putIfAbsent(estudiante.getCedula(), estudiante) == null) {
             this.acciones.push("Estudiante registrado: " + estudiante.getNombre());
+            return true; //  se registró correctamente
         } else {
             System.out.println("ERROR: Ya existe un estudiante con la cédula " + estudiante.getCedula());
+            return false; //  no se registró
         }
     }
+
 
     /*
     Crea un nuevo ticket y guarda la accion en pila
@@ -319,6 +322,18 @@ public class CentroAtencionEstudiantil {
 
     }
 
+    /**public boolean eliminarPorCedula(String cedula) {
+        if (estudiantes.containsKey(cedula)) {
+            estudiantes.remove(cedula);
+            System.out.println("Se eliminó el estudiante con cédula: " + cedula);
+            return true;
+        } else {
+            System.out.println("No se encontró ningún estudiante con la cédula: " + cedula);
+            return false;
+        }
+    }*/
+
+
     public int getCantidadTicketsEspera () {
         return this.tickets.size();
     }
@@ -370,4 +385,5 @@ public class CentroAtencionEstudiantil {
     public void setAcciones (Stack < String > acciones) {
         this.acciones = acciones;
     }
+
 }
