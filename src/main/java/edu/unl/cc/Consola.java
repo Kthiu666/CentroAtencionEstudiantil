@@ -37,7 +37,9 @@ public class Consola {
             System.out.println("7. Finalizar atencion de ticket");
             System.out.println("8. Consultar ticket en espera");
             System.out.println("9. Consultar ticket en historial");
-            System.out.println("10. Salir");
+            System.out.println("10. Marcar ticket actual como PENDIENTE");
+            System.out.println("11. Reanudar ticket PENDIENTE");
+            System.out.println("12. Salir");
             System.out.println("---------------------------------------");
             System.out.println("Elija una opcion:");
             opcionMenuPrincipal = sc.nextInt();
@@ -71,12 +73,18 @@ public class Consola {
                     consultarHistorialTicket();
                     break;
                 case 10:
+                    mostrarMenuMarcarPendiente();
+                    break;
+                case 11:
+                    mostrarMenuReanudarTicket();
+                    break;
+                case 12:
                     System.out.println("Fin");
                     break;
                 default:
                     System.out.println("Ingrese una opcion valida");
             }
-        } while (opcionMenuPrincipal != 10);
+        } while (opcionMenuPrincipal != 12);
     }
 
     public void mostrarMenuRegistrarEstudiante() {
@@ -292,6 +300,51 @@ public class Consola {
             // Esta línea solo se mostraría si buscarTicketPorNumero devolvió null
             System.out.println("(Ticket no encontrado)");
         }
+        System.out.println("---------------------------------------");
+    }
+
+    public void mostrarMenuMarcarPendiente() {
+        if (centroAtencionEstudiantil.getTicketAtencion() == null) {
+            System.out.println("ERROR: No hay ningún ticket en atención activa para marcar como pendiente.");
+            return;
+        }
+
+        System.out.println("---------------------------------------");
+        System.out.println("Ticket en atención: #" + centroAtencionEstudiantil.getTicketAtencion().getNumero());
+        System.out.println("Ingrese el MOTIVO para marcar como PENDIENTE:");
+        String motivo = sc.nextLine();
+
+        if (motivo.trim().isEmpty()) {
+            System.out.println("Cancelado. Debe ingresar un motivo.");
+            return;
+        }
+
+        centroAtencionEstudiantil.marcarPendiente(motivo);
+        System.out.println("Ticket #" + (centroAtencionEstudiantil.getTicketAtencion() != null ? centroAtencionEstudiantil.getTicketAtencion().getNumero() : "") + " movido a pendientes.");
+        System.out.println("---------------------------------------");
+    }
+
+    public void mostrarMenuReanudarTicket() {
+        if (centroAtencionEstudiantil.getTicketAtencion() != null) {
+            System.out.println("ERROR: Ya hay un ticket en atención. Finalícelo primero.");
+            return;
+        }
+
+        System.out.println("---------------------------------------");
+        System.out.println("Reanudar Ticket Pendiente");
+        System.out.println("Ingrese el NÚMERO del ticket que desea reanudar:");
+
+        int numeroTicket;
+        try {
+            numeroTicket = sc.nextInt();
+            sc.nextLine(); // Limpiar buffer
+        } catch (java.util.InputMismatchException e) {
+            System.out.println("ERROR: Debe ingresar un número.");
+            sc.nextLine(); // Limpiar buffer
+            return;
+        }
+
+        centroAtencionEstudiantil.reanudarTicket(numeroTicket);
         System.out.println("---------------------------------------");
     }
 

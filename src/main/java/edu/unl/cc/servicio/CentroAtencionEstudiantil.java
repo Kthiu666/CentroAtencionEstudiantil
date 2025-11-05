@@ -16,6 +16,7 @@ public class CentroAtencionEstudiantil {
     private Queue<Ticket> tickets; //--> Cola que almacena los nuevos tickets que llegan para ser atendidos
     private Queue<Ticket> ticketsAtendidos; // Cola para tickets que ya fueron finalizados
     private Map<String, Estudiante> estudiantes;  // Mapa para  acceso a estudiantes por su cédula
+    private Map<Integer, Ticket> ticketsPendientes;
     private Ticket ticketAtencion; // El ticket que está siendo atendido en ese momento (solo uno a la vez)
     private Queue<Ticket> ticketsUrgentes;
 
@@ -26,6 +27,7 @@ public class CentroAtencionEstudiantil {
         this.ticketsUrgentes = new LinkedList<>();
         this.ticketsAtendidos = new LinkedList<>();
         this.estudiantes = new HashMap<>();
+        this.ticketsPendientes = new HashMap<>();
         this.ticketAtencion = null; // Nadie está en atención al inicio
     }
 
@@ -262,6 +264,38 @@ public class CentroAtencionEstudiantil {
             if (this.ticketsAtendidos.remove(this.ticketAtencion)) {
                 this.ticketAtencion.setEstado(Estado.EN_ATENCION);
             }
+        } else if (ultimaAccion.contains("marcado como PENDIENTE")) {
+            // Revertir "marcar pendiente": Mover de pendientes a atención.
+            System.out.println("Deshaciendo 'marcado como PENDIENTE'...");
+            try {
+                String numStr = ultimaAccion.split(" ")[1];
+                int numTicket = Integer.parseInt(numStr);
+                Ticket ticketAReanudar = this.ticketsPendientes.remove(numTicket);
+                if (ticketAReanudar != null && this.ticketAtencion == null) {
+                    this.ticketAtencion = ticketAReanudar;
+                    this.ticketAtencion.setEstado(Estado.EN_ATENCION);
+                    this.ticketAtencion.removerUltimaNota();
+                } else {
+                    System.out.println("ERROR: No se pudo revertir 'pendiente'.");
+                    acciones.push(ultimaAccion);
+                    return;
+                }
+            } catch (Exception e) {
+                System.out.println("ERROR: Fallo acción: " + ultimaAccion);
+            }
+
+        } else if (ultimaAccion.contains("reanudado desde PENDIENTE")) {
+            // Revertir "reanudar": Mover de atención a pendientes.
+            System.out.println("Deshaciendo 'reanudado desde PENDIENTE'...");
+            if (this.ticketAtencion == null) {
+                System.out.println("ERROR (undo): No hay ticket en atención para revertir 'reanudar'.");
+                acciones.push(ultimaAccion);
+                return;
+            }
+            this.ticketAtencion.setEstado(Estado.PENDIENTE_DOCS);
+            this.ticketAtencion.removerUltimaNota();
+            this.ticketsPendientes.put(this.ticketAtencion.getNumero(), this.ticketAtencion);
+            this.ticketAtencion = null;
         }
 
         // Guardarla en la pila de revertidas
@@ -310,6 +344,47 @@ public class CentroAtencionEstudiantil {
                 this.ticketsAtendidos.add(this.ticketAtencion);
                 this.ticketAtencion = null;
             }
+        } else if (accionRehecha.contains("marcado como PENDIENTE")) {
+            // Rehacer "marcar pendiente"
+            System.out.println("Rehaciendo 'marcado como PENDIENTE'...");
+            if (this.ticketAtencion == null) {
+                System.out.println("ERROR (redo): No hay ticket en atención para marcar como pendiente.");
+                accionesRevertidas.push(accionRehecha);
+                return;
+            }
+            String motivo = "Motivo desconocido";
+            if (accionRehecha.contains("Motivo: ")) {
+                motivo = accionRehecha.substring(accionRehecha.indexOf("Motivo: ") + 8);
+            }
+            Nota notaPendiente = new Nota("Ticket puesto en PENDIENTE. Motivo: " + motivo, LocalDate.now());
+            this.ticketAtencion.agregarNota(notaPendiente);
+            this.ticketAtencion.setEstado(Estado.PENDIENTE_DOCS);
+            this.ticketsPendientes.put(this.ticketAtencion.getNumero(), this.ticketAtencion);
+            this.ticketAtencion = null;
+        } else if (accionRehecha.contains("reanudado desde PENDIENTE")) {
+            // Rehacer "reanudar ticket"
+            System.out.println("Rehaciendo 'reanudado desde PENDIENTE'...");
+            if (this.ticketAtencion != null) {
+                System.out.println("ERROR (redo): Ya hay un ticket en atención.");
+                accionesRevertidas.push(accionRehecha);
+                return;
+            }
+            try {
+                String numStr = accionRehecha.split(" ")[1];
+                int numTicket = Integer.parseInt(numStr);
+
+                Ticket ticketAReanudar = this.ticketsPendientes.remove(numTicket);
+                if (ticketAReanudar != null) {
+                    this.ticketAtencion = ticketAReanudar;
+                    this.ticketAtencion.setEstado(Estado.EN_ATENCION);
+                    Nota notaReanuda = new Nota("Atención reanudada.", LocalDate.now());
+                    this.ticketAtencion.agregarNota(notaReanuda);
+                } else {
+                    System.out.println("ERROR: No se encontró el ticket pendiente " + numTicket);
+                }
+            } catch (Exception e) {
+                System.out.println("ERROR (redo): Fallo al parsear acción: " + accionRehecha);
+            }
         }
                 // Volver a colocarla en la pila principal
                 acciones.push(accionRehecha);
@@ -317,6 +392,49 @@ public class CentroAtencionEstudiantil {
                 // Mostrar al usuario
                 System.out.println("Rehacer: " + accionRehecha);
 
+    }
+
+    /**
+     * Pone el ticket actual en estado PENDIENTE_DOCS.
+     * El ticket sale de atención y se guarda en el mapa de pendientes.
+     */
+    public void marcarPendiente(String motivo) {
+        if (this.ticketAtencion == null) {
+            System.out.println("ERROR: No hay ningún ticket en atención para marcar como pendiente.");
+            return;
+        }
+
+        int numTicket = this.ticketAtencion.getNumero();
+
+        Nota notaPendiente = new Nota("Ticket puesto en PENDIENTE. Motivo: " + motivo, LocalDate.now());
+        this.ticketAtencion.agregarNota(notaPendiente);
+        this.ticketAtencion.setEstado(Estado.PENDIENTE_DOCS);
+        this.ticketsPendientes.put(numTicket, this.ticketAtencion);
+        this.acciones.push("Ticket " + numTicket + " marcado como PENDIENTE. Motivo: " + motivo);
+        System.out.println("LOG: Ticket " + numTicket + " marcado como PENDIENTE.");
+        this.ticketAtencion = null;
+    }
+
+    /**
+     * Reanuda la atención de un ticket que estaba en PENDIENTE_DOCS.
+     * Lo busca por su número, lo saca de pendientes y lo pone en atención.
+     */
+    public void reanudarTicket(int numeroTicket) {
+        if (this.ticketAtencion != null) {
+            System.out.println("ERROR: Ya hay un ticket en atención (" + this.ticketAtencion.getNumero() + "). Finalícelo o márquelo como pendiente primero.");
+            return;
+        }
+        Ticket ticketAReanudar = this.ticketsPendientes.remove(numeroTicket);
+        if (ticketAReanudar == null) {
+            System.out.println("ERROR: No se encontró ningún ticket pendiente con el número " + numeroTicket);
+            return;
+        }
+        this.ticketAtencion = ticketAReanudar;
+        this.ticketAtencion.setEstado(Estado.EN_ATENCION);
+        Nota notaReanuda = new Nota("Atención reanudada.", LocalDate.now());
+        this.ticketAtencion.agregarNota(notaReanuda);
+        this.acciones.push("Ticket " + numeroTicket + " reanudado desde PENDIENTE.");
+        System.out.println("LOG: Reanudando atención del ticket " + numeroTicket);
     }
 
     public int getCantidadTicketsEspera () {
