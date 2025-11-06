@@ -1,0 +1,8 @@
+[2025-11-05] Estudiante: dome (Cédula: 1234567890): matricula
+[2025-11-05] Estudiante: dome (Cédula: 1234567890): Inicio de atención (URGENTE).
+[2025-11-05] Estudiante: dome (Cédula: 1234567890): Certificado de matricula
+[2025-11-05] Estudiante: dome (Cédula: 1234567890): Trámite finalizado.
+[2025-11-05] Estudiante: emilio (Cédula: 1234567899): computacion
+[2025-11-05] Estudiante: emilio (Cédula: 1234567899): Inicio de atención.
+[2025-11-05] Estudiante: emilio (Cédula: 1234567899): Homologacion de la carrera de computacion
+[2025-11-05] Estudiante: emilio (Cédula: 1234567899): Trámite finalizado.
