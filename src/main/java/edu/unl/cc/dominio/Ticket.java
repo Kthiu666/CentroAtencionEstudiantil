@@ -31,6 +31,15 @@ public class Ticket {
         this.urgente = false;
     }
 
+    public Ticket(String descripcion, TipoTramite tipoTramite, Estudiante estudiante, boolean urgente) {
+        this.descripcion = descripcion;
+        this.estado = Estado.EN_COLA;//
+        this.tipoTramite = tipoTramite;
+        this.estudiante = estudiante;
+        this.notas = new ArrayList<>();
+        this.urgente = urgente;
+    }
+
     public void agregarNota(Nota nota) {
         this.notas.add(nota);
     }
@@ -93,6 +102,10 @@ public class Ticket {
 
     @Override
     public String toString() {
-        return "Ticket #" + numero + " - " + tipoTramite + " - " + estado + " (" + estudiante + ")";
+        return "  -> Ticket N°" + numero
+                + "   | Trámite   : " + tipoTramite
+                + "   | Estado: "  + estado
+                + "   | Estudiante: " + estudiante
+                + "   | Es Urgente   : " + isUrgente();
     }
 }

@@ -4,6 +4,8 @@ import edu.unl.cc.dominio.Estado;
 import edu.unl.cc.dominio.Estudiante;
 import edu.unl.cc.dominio.Nota;
 import edu.unl.cc.dominio.Ticket;
+import edu.unl.cc.util.ManejadorNotasArchivo;
+import edu.unl.cc.util.NotaImportadaDTO;
 
 import java.time.LocalDate;
 import java.util.*;
@@ -11,15 +13,19 @@ import java.util.stream.Collectors;
 
 public class CentroAtencionEstudiantil {
 
-    private Stack<String> acciones; //--> Pila para el historial de acciones
+    private static final String ARCHIVO_NOTAS_CSV = "notas_historial.csv";
+    private static final String ARCHIVO_NOTAS_TXT = "notas_historial.txt";
+
+    private Stack<String> acciones;           //--> Pila para el historial de acciones
     private Stack<String> accionesRevertidas; //--> Pila para el historial de acciones revertidas
-    private Queue<Ticket> tickets; //--> Cola que almacena los nuevos tickets que llegan para ser atendidos
-    private Queue<Ticket> ticketsAtendidos; // Cola para tickets que ya fueron finalizados
+    private Queue<Ticket> tickets;            //--> Cola que almacena los nuevos tickets que llegan para ser atendidos
+    private Queue<Ticket> ticketsAtendidos;   // Cola para tickets que ya fueron finalizados
     private Map<String, Estudiante> estudiantes;  // Mapa para  acceso a estudiantes por su cédula
     private Map<Integer, Ticket> ticketsPendientes;
-    private Ticket ticketAtencion; // El ticket que está siendo atendido en ese momento (solo uno a la vez)
+    private Ticket ticketAtencion;            // El ticket que está siendo atendido en ese momento (solo uno a la vez)
     private Queue<Ticket> ticketsUrgentes;
 
+    private ManejadorNotasArchivo manejadorNotasArchivo;
 
     public CentroAtencionEstudiantil() {
         this.acciones = new Stack<>();
@@ -30,6 +36,8 @@ public class CentroAtencionEstudiantil {
         this.estudiantes = new HashMap<>();
         this.ticketsPendientes = new HashMap<>();
         this.ticketAtencion = null; // Nadie está en atención al inicio
+        this.manejadorNotasArchivo = new ManejadorNotasArchivo();
+        this.cargarNotasAutomaticamente();
     }
 
     public boolean registrarEstudiante(Estudiante estudiante) {
@@ -40,7 +48,7 @@ public class CentroAtencionEstudiantil {
 
         // putIfAbsent añade solo si no existe y devuelve null cuando sea agrega correctamente
         if (this.estudiantes.putIfAbsent(estudiante.getCedula(), estudiante) == null) {
-            this.acciones.push("Estudiante registrado: " + estudiante.getNombre());
+            //this.acciones.push("Estudiante registrado: " + estudiante.getNombre());
             return true; //  se registró correctamente
         } else {
             System.out.println("ERROR: Ya existe un estudiante con la cédula " + estudiante.getCedula());
@@ -87,7 +95,7 @@ public class CentroAtencionEstudiantil {
             this.ticketAtencion.agregarNota(notaInicio);
 
             // Registrar la acción
-            this.acciones.push("Ticket URGENTE " + ticketAtencion.getNumero() + " pasa a atención.");
+            //this.acciones.push("Ticket URGENTE " + ticketAtencion.getNumero() + " pasa a atención.");
             System.out.println(" Atendiendo ticket URGENTE " + ticketAtencion.getNumero());
 
             //  Si no hay urgentes, atiende la cola NORMAL
@@ -98,7 +106,7 @@ public class CentroAtencionEstudiantil {
             Nota notaInicio = new Nota("Inicio de atención.", LocalDate.now());
             this.ticketAtencion.agregarNota(notaInicio);
 
-            this.acciones.push("Ticket " + ticketAtencion.getNumero() + " pasa a atención.");
+           // this.acciones.push("Ticket " + ticketAtencion.getNumero() + " pasa a atención.");
             System.out.println(" Atendiendo ticket " + ticketAtencion.getNumero());
 
             //  Si ambas están vacías
@@ -121,7 +129,7 @@ public class CentroAtencionEstudiantil {
         this.ticketAtencion.agregarNota(notaFin);
         this.ticketsAtendidos.add(this.ticketAtencion);// Mueve a la cola de atendidos
         // 4. Registrar acción
-        this.acciones.push("Ticket " + ticketAtencion.getNumero() + " finalizado.");
+        //this.acciones.push("Ticket " + ticketAtencion.getNumero() + " finalizado.");
         System.out.println("LOG: Ticket " + ticketAtencion.getNumero() + " finalizado y movido a 'atendidos'.");
 
         // 5. Liberar la ventanilla de atención
@@ -453,6 +461,140 @@ public class CentroAtencionEstudiantil {
         return true;
     }
 
+    // --- METODO PARA CONSULTAR LOS TIPOS DE ESTADO DEL TICKET ---
+
+    /**
+     * Busca y retorna una lista de tickets que coinciden con el estado especificado.
+     * Revisa todas las colecciones donde puede residir un ticket (colas y historial).
+     * @param estado El estado a filtrar.
+     * @return Una lista de Tickets que cumplen con ese estado.
+     */
+    public List<Ticket> consultarTicketsPorEstado(Estado estado) {
+        List<Ticket> resultados = new LinkedList<>();
+
+        // 1. Revisar las colas (Tickets en EN_COLA)
+        if (estado == Estado.EN_COLA) {
+            ticketsUrgentes.forEach(resultados::add);
+            tickets.forEach(resultados::add);
+        }
+
+        // 2. Revisar el ticket actualmente en atención
+        if (ticketAtencion != null && ticketAtencion.getEstado() == estado) {
+            resultados.add(ticketAtencion);
+        }
+
+        // 3. Revisar el historial (donde residen COMPLETADO y PENDIENTE_DOCS)
+        for (Ticket t : ticketsAtendidos) {
+            if (t.getEstado() == estado) {
+                // Evitamos duplicar el ticket #0 si ya se añadió desde la importación
+                if (t.getNumero() != 0) {
+                    resultados.add(t);
+                }
+            }
+        }
+
+        if (estado == Estado.PENDIENTE_DOCS) {
+            // Como ticketsPendientes es un Map<Integer, Ticket>,
+            // iteramos sobre sus valores (values) que son los Tickets.
+            for (Ticket t : ticketsPendientes.values()) {
+                resultados.add(t);
+            }
+        }
+        return resultados;
+    }
+
+    // --- METODOS PARA IMPORTAR O EXPORTAR NOTAS EN TXT Y CSV ---
+
+    /**
+     * Intenta cargar notas del CSV al iniciar.
+     */
+    private void cargarNotasAutomaticamente() {
+        List<NotaImportadaDTO> dtosImportados = manejadorNotasArchivo.importarNotasDesdeCSV(ARCHIVO_NOTAS_CSV);
+        if (!dtosImportados.isEmpty()) {
+            cargarNotasAlSistema(dtosImportados);
+        }
+    }
+
+    /**
+     * Asigna las notas importadas a un Ticket especial (#0) en el historial.
+     */
+    private void cargarNotasAlSistema(List<NotaImportadaDTO> dtosImportados) {
+        Ticket ticketHistorial = buscarTicketPorNumero(0);
+
+        if (ticketHistorial == null) {
+            ticketHistorial = new Ticket("Historial de notas importadas automáticamente.", null, null);
+            ticketHistorial.setNumero(0);
+            ticketHistorial.setEstado(Estado.COMPLETADO);
+            this.ticketsAtendidos.add(ticketHistorial);
+        }
+
+        int notasAgregadas = 0;
+        for (NotaImportadaDTO dto : dtosImportados) {
+            // Convertimos el DTO en un objeto Nota de dominio
+            Nota nuevaNota = dto.toNota();
+
+            // Agregamos la nota al ticket #0 si no existe
+            if (!ticketHistorial.getNotas().contains(nuevaNota)) {
+                ticketHistorial.agregarNota(nuevaNota);
+                notasAgregadas++;
+            }
+        }
+
+        if (notasAgregadas > 0) {
+            System.out.println("NOTIFICACIÓN: Se han importado " + notasAgregadas + " notas correctamente desde " + ARCHIVO_NOTAS_CSV + ".");
+        }
+    }
+
+    public void guardarNotasAutomaticamente() {
+        List<Ticket> ticketsParaExportar = obtenerTicketsParaExportar();
+
+        if (!ticketsParaExportar.isEmpty()) {
+            manejadorNotasArchivo.exportarNotasACSV(ticketsParaExportar, ARCHIVO_NOTAS_CSV);
+            manejadorNotasArchivo.exportarNotasATXT(ticketsParaExportar, ARCHIVO_NOTAS_TXT);
+        } else {
+            System.out.println("INFO: No hay notas en el historial para guardar automáticamente.");
+        }
+    }
+
+    /**
+     * Reúne todos los tickets que tienen notas para exportar (incluye el ticket en atención).
+     */
+    private List<Ticket> obtenerTicketsParaExportar() {
+        List<Ticket> lista = new LinkedList<>();
+        lista.addAll(this.ticketsAtendidos);
+        if (this.ticketAtencion != null) {
+            lista.add(this.ticketAtencion);
+        }
+        return lista;
+    }
+
+    /**
+     * Recolecta todas las notas de los tickets en historial y en atención.
+     */
+    private List<Nota> obtenerTodasLasNotasDeHistorial() {
+        List<Nota> todasLasNotas = new LinkedList<>();
+        // Recorrer tickets atendidos y añadir sus notas
+        this.ticketsAtendidos.forEach(ticket -> todasLasNotas.addAll(ticket.getNotas()));
+
+        // Incluir el ticket en atención
+        if (this.ticketAtencion != null) {
+            todasLasNotas.addAll(this.ticketAtencion.getNotas());
+        }
+
+        return todasLasNotas;
+    }
+
+    /**
+     * Devuelve una lista con todos los estudiantes registrados en el sistema.
+     *
+     * @return Una lista de objetos Estudiante.
+     */
+    public List<Estudiante> getTodosLosEstudiantes() {
+        // Obtenemos la colección de valores (Estudiante) del Map
+        // y la convertimos en una nueva ArrayList.
+        return new ArrayList<>(this.estudiantes.values());
+    }
+
     public int getCantidadTicketsEspera () {
         return this.tickets.size();
     }
@@ -505,4 +647,19 @@ public class CentroAtencionEstudiantil {
         this.acciones = acciones;
     }
 
+    public Stack<String> getAccionesRevertidas() {
+        return accionesRevertidas;
+    }
+
+    public void setAccionesRevertidas(Stack<String> accionesRevertidas) {
+        this.accionesRevertidas = accionesRevertidas;
+    }
+
+    public Map<Integer, Ticket> getTicketsPendientes() {
+        return ticketsPendientes;
+    }
+
+    public void setTicketsPendientes(Map<Integer, Ticket> ticketsPendientes) {
+        this.ticketsPendientes = ticketsPendientes;
+    }
 }

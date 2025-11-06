@@ -1,12 +1,10 @@
 package edu.unl.cc;
 
-import edu.unl.cc.dominio.Estudiante;
-import edu.unl.cc.dominio.Nota;
-import edu.unl.cc.dominio.Ticket;
-import edu.unl.cc.dominio.TipoTramite;
+import edu.unl.cc.dominio.*;
 import edu.unl.cc.servicio.CentroAtencionEstudiantil;
 import edu.unl.cc.util.Validaciones;
 
+import java.sql.SQLOutput;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Queue;
@@ -32,13 +30,13 @@ public class Consola {
             System.out.println("2. Crear ticket");
             System.out.println("3. Atender ticket");
             System.out.println("4. Regitrar observaciones/notas");
-            System.out.println("5. Deshacer cambios");
-            System.out.println("6. Rehacer cambios");
+            System.out.println("5. Deshacer Nota");
+            System.out.println("6. Rehacer Nota");
             System.out.println("7. Finalizar atencion de ticket");
-            System.out.println("8. Consultar ticket en espera");
-            System.out.println("9. Consultar ticket en historial");
-            System.out.println("10. Marcar ticket actual como PENDIENTE");
-            System.out.println("11. Reanudar ticket PENDIENTE");
+            System.out.println("8. Consultar ticket por Estado");
+            System.out.println("9. Marcar ticket actual como PENDIENTE");
+            System.out.println("10. Reanudar ticket PENDIENTE");
+            System.out.println("11. Usuarios Registrados");
             System.out.println("12. Salir");
             System.out.println("---------------------------------------");
             System.out.println("Elija una opcion:");
@@ -67,19 +65,21 @@ public class Consola {
                     centroAtencionEstudiantil.finalizarTicket();
                     break;
                 case 8:
-                    menuConsultarTicketEspera();
+                    mostrarMenuConsultarPorEstado();
                     break;
                 case 9:
-                    consultarHistorialTicket();
-                    break;
-                case 10:
                     mostrarMenuMarcarPendiente();
                     break;
-                case 11:
+                case 10:
                     mostrarMenuReanudarTicket();
                     break;
+                case 11:
+                    mostrarMenuUsuarios();
+                    break;
                 case 12:
-                    System.out.println("Fin");
+                    centroAtencionEstudiantil.guardarNotasAutomaticamente();
+                    System.out.println("Historial de notas exportado.");
+                    System.out.println("Fin del programa.");
                     break;
                 default:
                     System.out.println("Ingrese una opcion valida");
@@ -87,6 +87,20 @@ public class Consola {
         } while (opcionMenuPrincipal != 12);
     }
 
+    public void mostrarMenuUsuarios(){
+        List<Estudiante> lista = centroAtencionEstudiantil.getTodosLosEstudiantes();
+        System.out.println("--- Lista de Estudiantes Registrados ---");
+        if (lista.isEmpty()) {
+            System.out.println("No hay estudiantes registrados.");
+        } else {
+            for (Estudiante est : lista) {
+                // La consola se encarga de formatear la salida
+                System.out.println("   | Cedula   : " + est.getCedula()
+                        + "   | Nombre: " + est.getNombre()
+                        + "   | Apellido: " + est.getApellido());
+            }
+        }
+    }
     public void mostrarMenuRegistrarEstudiante() {
         System.out.println("----------------------------------------");
         String nombreEstudiante;
@@ -131,7 +145,7 @@ public class Consola {
                 boolean registrado = centroAtencionEstudiantil.registrarEstudiante(nuevoEstudiante);
 
                 if (registrado) {
-                    System.out.println("Estudiante " + nuevoEstudiante.getNombre() + nuevoEstudiante.getApellido() + " registrado exitosamente :)");
+                    System.out.println("Estudiante " + nuevoEstudiante.getNombre() +" "+ nuevoEstudiante.getApellido() + " registrado exitosamente :)");
                 } else {
                     System.out.println("No se pudo registrar el estudiante.");
                 }
@@ -367,6 +381,73 @@ public class Consola {
             System.out.println("Ticket #" + numeroTicket + " reanudado exitosamente y ahora está en atención.");
         }
         System.out.println("---------------------------------------");
+    }
+
+    /**
+     * Muestra el menú para que el usuario elija un estado y presenta los resultados.
+     */
+    public void mostrarMenuConsultarPorEstado() {
+        int opcion;
+        Estado estadoConsulta = null;
+
+        do {
+            System.out.println("\n--- CONSULTAR TICKETS POR ESTADO ---");
+            System.out.println("1. EN_COLA");
+            System.out.println("2. EN_ATENCION");
+            System.out.println("3. PENDIENTE_DOCS");
+            System.out.println("4. COMPLETADO");
+            System.out.println("5. Volver al menú principal");
+            System.out.println("-------------------------------------");
+            System.out.print("Elija un estado para consultar: ");
+
+            // Verificación básica de entrada para evitar errores graves
+            if (sc.hasNextInt()) {
+                opcion = sc.nextInt();
+                sc.nextLine(); // Consumir salto de línea
+            } else {
+                System.out.println("Error: Ingrese un número válido.");
+                sc.next(); // Consumir la entrada no válida
+                opcion = 0;
+            }
+
+            switch (opcion) {
+                case 1: estadoConsulta = Estado.EN_COLA; break;
+                case 2: estadoConsulta = Estado.EN_ATENCION; break;
+                case 3: estadoConsulta = Estado.PENDIENTE_DOCS; break;
+                case 4: estadoConsulta = Estado.COMPLETADO; break;
+                case 5: return; // Vuelve al menú principal
+                default: System.out.println("Opción no válida."); continue;
+            }
+
+            if (estadoConsulta != null) {
+                List<Ticket> resultados = centroAtencionEstudiantil.consultarTicketsPorEstado(estadoConsulta);
+
+                System.out.println("\n--- RESULTADOS PARA ESTADO: " + estadoConsulta + " (" + resultados.size() + " Tickets) ---");
+                if (resultados.isEmpty()) {
+                    System.out.println("No se encontraron tickets.");
+                } else {
+                    for (int i = 0; i < resultados.size(); i++) {
+                        Ticket t = resultados.get(i);
+                        // El toString() de Ticket debería ser suficiente para mostrar la información clave
+                        System.out.println((i + 1) + ". " + t.toString());
+                        System.out.println("--- Notas y Observaciones  ---");
+                        List<Nota> notasDelTicket = t.getNotas();
+                        if (notasDelTicket == null || notasDelTicket.isEmpty()) {
+                            System.out.println("(No hay notas registradas en este ticket)");
+                        } else {
+                            // Iteramos sobre la lista de notas y las mostramos
+                            for (Nota nota : notasDelTicket) {
+                                System.out.println("  -> " + nota.toString());
+                            }
+                        }
+
+                    }
+                }
+                System.out.println("----------------------------------------\n");
+                estadoConsulta = null;
+            }
+
+        } while (opcion != 5);
     }
 
     public static void main(String[] args) {
